@@ -2,7 +2,7 @@ import # std libs
   std/[strformat, strutils]
 
 import # nim-status libs
-  ../../../nim_status/[accounts, alias]
+  ../../../nim_status/accounts
 
 import # chat libs
   ./parser
@@ -103,6 +103,10 @@ proc action*(self: ChatTUI, event: CreateAccountResult) {.async, gcsafe,
 
   # if TUI is not ready for output then ignore it
   if self.outputReady:
+    if event.error != "":
+      self.wprintFormatError(event.timestamp, event.error)
+      return
+
     let
       account = event.account
       timestamp = event.timestamp
@@ -120,16 +124,13 @@ proc action*(self: ChatTUI, event: ImportMnemonicResult) {.async, gcsafe, nimcal
   # if TUI is not ready for output then ignore it
   if self.outputReady:
     let
-      multiAcc = event.multiAcc
+      account = event.account
       timestamp = event.timestamp
-
-      account = multiAcc.accounts[2]
-      name = account.publicKey.generateAlias()
+      name = account.name
       keyUid = account.keyUid
       abbrev = keyUid[0..5] & "..." & keyUid[^4..^1]
 
-    # TODO need proper JSON serialization for this
-    trace "TUI importing account" , multiAcc=multiAcc.encode
+    trace "TUI importing account" , account=account.encode
 
     self.printResult("Imported account:", timestamp)
     self.printResult(fmt"{2.indent()}{name} ({abbrev})", timestamp)

@@ -48,8 +48,8 @@ proc connect*(self: ChatClient, username: string) {.async.} =
 proc disconnect*(self: ChatClient) {.async.} =
   asyncSpawn stopWakuChat2(self.taskRunner, status)
 
-proc generateMultiAccount*(self: ChatClient, password: string) {.async.} =
-  asyncSpawn generateMultiAccount(self.taskRunner, status, password)
+proc createAccount*(self: ChatClient, password: string) {.async.} =
+  asyncSpawn createAccount(self.taskRunner, status, password)
 
 proc listAccounts*(self: ChatClient) {.async.} =
   asyncSpawn listAccounts(self.taskRunner, status)

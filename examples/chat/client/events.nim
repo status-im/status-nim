@@ -1,5 +1,5 @@
 import # nim-status libs
-  ../../../nim_status/accounts, ../../../nim_status/multiaccount
+  ../../../nim_status/accounts
 
 import # chat libs
   ./common
@@ -14,10 +14,12 @@ type
 
   CreateAccountResult* = ref object of ClientEvent
     account*: PublicAccount
+    error*: string
     timestamp*: int64
 
   ImportMnemonicResult* = ref object of ClientEvent
-    multiAcc*: MultiAccount
+    error*: string
+    account*: PublicAccount
     timestamp*: int64
 
   ListAccountsResult* = ref object of ClientEvent

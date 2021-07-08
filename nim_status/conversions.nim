@@ -1,14 +1,14 @@
 import # std libs
-  json, options, strutils
+  std/[json, options, strutils]
 
 import # vendor libs
   json_serialization, json_serialization/std/options as json_options, sqlcipher,
   web3/ethtypes, stew/byteutils
 
 import # nim_status libs
-  settings/types
+  ./settings/types
 
-from tx_history/types as tx_history_types import TxType
+from ./tx_history/types as tx_history_types import TxType
 
 # needed because nim-sqlcipher calls toDbValue/fromDbValue which does not have
 # json_serialization/std/options imported 

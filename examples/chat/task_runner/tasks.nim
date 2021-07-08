@@ -1,7 +1,9 @@
 import # vendor libs
   chronicles, chronos, json_serialization, json_serialization/std/options
 
-export chronicles, json_serialization, options
+import ./serialization
+
+export chronicles, json_serialization, options, serialization
 
 logScope:
   topics = "task_runner"

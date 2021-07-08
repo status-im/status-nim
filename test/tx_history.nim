@@ -1,16 +1,14 @@
 import # nim libs
-  os, json, options
-
-import tables
+  std/[os, json, options, tables]
 
 import # vendor libs
   sqlcipher, json_serialization, web3/conversions as web3_conversions
 
 import # nim-status libs
-  ../../nim_status/[settings, database, callrpc]
+  ../../nim_status/[settings, database, callrpc],
+  ../../nim_status/tx_history/types
 
 from ../../nim_status/tx_history import nil
-import ../../nim_status/tx_history/types
 
 
 # Initialize db

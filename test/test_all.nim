@@ -4,6 +4,7 @@ import
   # been removed from this repo
   # ./account,
 
+  ./account/generator/generator,
   ./accounts,
   ./bip32,
   ./callrpc,

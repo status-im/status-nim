@@ -1,99 +1,214 @@
 import # std libs
-  std/[json, os]
+  std/[json, os, strformat, strutils, tables]
 
 import # vendor libs
-  eth/[keyfile/keyfile, keys], nimcrypto/[sha2, pbkdf2, hash, hmac],
-  json_serialization, secp256k1, stew/[results, byteutils]
+  eth/keys, eth/keyfile/[keyfile, uuid], json_serialization, secp256k1,
+  stew/results
 
 import # nim-status libs
-  ../../extkeys/[hdkey, mnemonic, types], ../../multiaccount, ./utils
+  ./account, ../../accounts, ../../extkeys/[hdkey, mnemonic, types], ./utils
 
 export utils
 
-const
-    MIN_SEED_BYTES = 16 # 128 bits
-      # MinSeedBytes is the minimum number of bytes allowed for a seed to a master node.
-    MAX_SEED_BYTES = 64 # 512 bits
-      # MaxSeedBytes is the maximum number of bytes allowed for a seed to a master node.
+type
+  Generator* = ref object
+    accounts*: TableRef[string, Account]
 
-proc toKeyUid(publicKey: PublicKey): string =
-  let hash = sha256.digest(publicKey.toRaw())
-  "0x" & toHex(toOpenArray(hash.data, 0, len(hash.data) - 1))
+  AccountResult = Result[Account, string]
 
-proc buildAccount(privateKey: PrivateKey): Account =
-  var acc = Account()
-  acc.privateKey = $privateKey
-  let publicKey = privateKey.toPublicKey()
-  acc.publicKey = "0x04" & $publicKey
-  acc.address = publicKey.toAddress()
-  # let skResult = PublicKey.fromHex(acc.publicKey)
-  acc.keyUid = publicKey.toKeyUid()
-  # acc.keyUid = PublicKey.fromHex(acc.publicKey).toKeyUid()
+  AddAccountResult = Result[UUID, string]
 
-  return acc
+  DeriveAddressesResult = Result[seq[AccountInfo], string]
 
-proc deriveAccounts*(multiAcc: MultiAccount, paths: seq[KeyPath]): seq[Account] =
-  var accounts: seq[Account]
-  for p in paths:
-    let skResult = derive(multiAcc.keySeed, p)
-    var acc = buildAccount(PrivateKey(skResult.get()))
-    acc.path = p
-    accounts.add(acc)
-  return accounts
+  DeriveChildAccountResult = Result[Account, string]
 
-proc importMnemonic*(mnemonicPhrase: Mnemonic, bip39Passphrase: string): MultiAccount =
-  let seed = mnemonicSeed(mnemonicPhrase, bip39Passphrase)
-  # Ensure seed is within expected limits
-  let lseed = openArray[byte](seed).len
-  if lseed < MIN_SEED_BYTES or lseed > MAX_SEED_BYTES:
-    return MultiAccount()
+  DeriveChildAccountsResult = Result[seq[Account], string]
 
-  return MultiAccount(mnemonic: mnemonicPhrase,
-         keyseed: seed)
+  GenerateAndDeriveAddressesResult* = Result[
+    seq[GeneratedAndDerivedAccountInfo], string]
 
-proc generateAndDeriveAccounts*(mnemonicPhraseLength: int, n: int,
-  bip39Passphrase: string, paths: seq[KeyPath]): seq[MultiAccount] =
+  GenerateResult = Result[seq[GeneratedAccountInfo], string]
 
-  let entropyStrength = mnemonicPhraseLengthToEntropyStrength(mnemonicPhraseLength)
-  var multiAccounts = newSeq[MultiAccount]()
-  for i in 0..<n:
+  ImportMnemonicResult* = Result[GeneratedAccountInfo, string]
+
+  ImportPrivateKeyResult* = Result[IdentifiedAccountInfo, string]
+
+  LoadAccountResult* = Result[IdentifiedAccountInfo, string]
+
+  PublicAccountResult* = Result[PublicAccount, string]
+
+  StoreDerivedAccountsResult* = Result[seq[AccountInfo], string]
+
+proc new*(T: type Generator): T =
+  T(accounts: newTable[string, Account]())
+
+proc addAccount(self: Generator, acc: Account): AddAccountResult =
+  let uuidResult = uuidGenerate()
+  if uuidResult.isErr:
+    return AddAccountResult.err "Error generating uuid: " & $uuidResult.error
+  
+  let uuid = uuidResult.get
+  self.accounts[$uuid] = acc
+  AddAccountResult.ok(uuid)
+
+proc deriveChildAccount(self: Generator, a: Account,
+  path: KeyPath): DeriveChildAccountResult =
+
+  let
+    childExtKey = ?a.extendedKey.derive(path)
+    secretKey = childExtKey.secretKey
+    account = Account(secretKey: secretKey, extendedKey: childExtKey)
+
+  ok(account)
+
+proc deriveChildAccounts(self: Generator, a: Account,
+  paths: seq[KeyPath]): DeriveChildAccountsResult =
+
+  var derived: seq[Account] = @[]
+  for path in paths:
+    derived.add ?self.deriveChildAccount(a, path)
+
+  ok(derived)
+
+proc findAccount(self: Generator, accountId: UUID): AccountResult =
+  let id = $accountId
+  if not self.accounts.hasKey(id):
+    return AccountResult.err "Account doesn't exist"
+
+  AccountResult.ok(self.accounts[id])
+
+proc deriveAddresses*(self: Generator, accountId: UUID,
+  paths: seq[KeyPath]): DeriveAddressesResult =
+  
+  let
+    acc = ?self.findAccount(accountId)
+    children = ?self.deriveChildAccounts(acc, paths)
+
+  var derived: seq[AccountInfo] = @[]
+
+  for child in children:
+    derived.add child.toAccountInfo()
+
+  DeriveAddressesResult.ok(derived)
+
+proc importMnemonic*(self: Generator, mnemonic: Mnemonic,
+  bip39Passphrase: string): ImportMnemonicResult =
+
+  let
+    seed = mnemonic.mnemonicSeed(bip39Passphrase)
+    masterExtKey = ?seed.newMaster()
+    account = Account(secretKey: masterExtKey.secretKey,
+      extendedKey: masterExtKey)
+    id = ?self.addAccount(account)
+    generatedAccInfo = account.toGeneratedAccountInfo(id, mnemonic)
+
+  ImportMnemonicResult.ok(generatedAccInfo)
+
+proc importPrivateKey*(self: Generator,
+  privateKeyHex: string): ImportPrivateKeyResult =
+
+  var privateKeyStripped = privateKeyHex
+  privateKeyStripped.removePrefix("0x")
+
+  let secretKeyResult = SkSecretKey.fromHex(privateKeyStripped)
+  if secretKeyResult.isErr:
+    return ImportPrivateKeyResult.err $secretKeyResult.error
+
+  let
+    secretKey = secretKeyResult.get
+    extPrivKey = ExtendedPrivKey(secretKey: secretKey)
+    account = Account(secretKey: secretKey, extendedKey: extPrivKey)
+    id = ?self.addAccount(account)
+
+  ImportPrivateKeyResult.ok account.toIdentifiedAccountInfo(id)
+
+proc generate*(self: Generator, mnemonicPhraseLength: int, n: int,
+  bip39Passphrase: string): GenerateResult =
+
+  var generated: seq[GeneratedAccountInfo] = @[]
+
+  for i in 0..n-1:
+    let entropyStrength = mnemonicPhraseLengthToEntropyStrength(mnemonicPhraseLength)
     let phrase = mnemonicPhrase(entropyStrength, Language.English)
-    var multiAcc = importMnemonic(phrase, bip39Passphrase)
-    # let masterSecKey = deriveMaster(multi)
-    # multiAcc.pubkey = 
-    multiAcc.accounts = deriveAccounts(multiAcc,  paths)
-    multiAccounts.add(multiAcc)
+    generated.add ?self.importMnemonic(phrase, bip39Passphrase)
 
-  return multiAccounts
+  GenerateResult.ok(generated)
 
+proc generateAndDeriveAddresses*(self: Generator, mnemonicPhraseLength: int,
+  n: int, bip39Passphrase: string,
+  paths: seq[KeyPath]): GenerateAndDeriveAddressesResult =
 
-proc importMnemonicAndDeriveAccounts*(mnemonicPhrase: Mnemonic, bip39Passphrase: string, paths: seq[KeyPath]): MultiAccount =
-  var multiAcc = importMnemonic(mnemonicPhrase, bip39Passphrase)
-  multiAcc.accounts = deriveAccounts(multiAcc,  paths)
+  let masterAccounts = ?self.generate(mnemonicPhraseLength, n, bip39Passphrase)
 
-  return multiAcc
+  var generatedAndDerived: seq[GeneratedAndDerivedAccountInfo] = @[]
 
-proc storeDerivedAccounts*(multiAcc: MultiAccount, password: string,
-  dir: string = "", version: int = 3, cryptkind: CryptKind = AES128CTR,
-  kdfkind: KdfKind = PBKDF2, workfactor: int = 0) =
+  for i in 0..masterAccounts.len - 1:
+    let
+      generatedAccountInfo = masterAccounts[i]
+      derived = ?self.deriveAddresses(generatedAccountInfo.id, paths)
+
+    generatedAndDerived.add generatedAccountInfo.toGeneratedAndDerived(derived)
+  
+  GenerateAndDeriveAddressesResult.ok(generatedAndDerived)
+
+proc loadAccount*(self: Generator, address: string, password: string,
+  dir: string = ""): LoadAccountResult =
+
+  let
+    json = parseFile(dir / address)
+    privateKeyResult = decodeKeyFileJson(json, password)
+  
+  if privateKeyResult.isErr:
+    return LoadAccountResult.err fmt"Error decoding private key from file {json}: " &
+      $privateKeyResult.error
+
+  # TODO: Add ValidateKeystoreExtendedKey
+  # https://github.com/status-im/status-go/blob/e0eb96a992fea9d52d16ae9413b1198827360278/account/generator/generator.go#L213-L215
+
+  let
+    secretKey = SkSecretKey(privateKeyResult.get)
+    extendedKey = ?secretKey.toExtendedKey()
+    account = Account(secretKey: secretKey, extendedKey: extendedKey)
+    id = ?self.addAccount(account)
+    identifiedAccInfo = account.toIdentifiedAccountInfo(id)
+
+  LoadAccountResult.ok(identifiedAccInfo)
+
+proc reset(self: Generator) =
+  # Reset resets the accounts map removing all the accounts from memory.
+  self.accounts.clear()
+
+proc storeDerivedAccounts*(self: Generator, accountId: UUID, paths: seq[KeyPath],
+  password: string, dir: string = "", version: int = 3,
+  cryptkind: CryptKind = AES128CTR, kdfkind: KdfKind = PBKDF2,
+  workfactor: int = 0): StoreDerivedAccountsResult =
 
   var workfactorFinal = workfactor
   when not defined(release):
     # reduce the account creation time by a factor of 5 for debug builds only
     if workfactorFinal == 0: workfactorFinal = 100
 
-  for acc in multiAcc.accounts:
-    let privateKey = acc.privateKey
-    let keyFileJson = createKeyFileJson(PrivateKey.fromHex(privateKey).get(), password, version, cryptkind, kdfkind, workfactorFinal)
+  let
+    acc = ?self.findAccount(accountId)
+    children = ?self.deriveChildAccounts(acc, paths)
 
-    writeFile(dir / acc.address, $keyFileJson.get())
+  var accountInfos: seq[AccountInfo] = @[]
 
+  for child in children:
+    let keyFileJsonResult = createKeyFileJson(PrivateKey child.secretKey, password, version, cryptkind,
+          kdfkind, workfactorFinal)
 
-proc loadAccount*(address: string, password: string, dir: string = ""): Account =
-  let json = parseFile(dir / address)
-  let privateKey = decodeKeyFileJson(json, password)
+    if keyFileJsonResult.isErr:
+      return StoreDerivedAccountsResult.err "Error creating key file: " &
+        $keyFileJsonResult.error
 
-  return buildAccount(privateKey.get())
+    let
+      accountInfo = child.toAccountInfo
+      keyFileJson = $keyFileJsonResult.get()
 
-# NewMaster creates new master node, root of HD chain/tree.
-# Both master and child nodes are of ExtendedKey type, and all the children derive from the root node.
+    dir.createDir()
+    writeFile(dir / accountInfo.address, keyFileJson)
+    accountInfos.add accountInfo
+    self.reset()
+
+  StoreDerivedAccountsResult.ok(accountInfos)

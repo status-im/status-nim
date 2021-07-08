@@ -66,7 +66,7 @@ proc command*(self: ChatTUI, command: CreateAccount) {.async, gcsafe,
     self.wprintFormatError(epochTime().int64,
       "password cannot be blank, please provide a password as the first argument.")
   else:
-    asyncSpawn self.client.generateMultiAccount(command.password)
+    asyncSpawn self.client.createAccount(command.password)
 
 # Disconnect -------------------------------------------------------------------
 
@@ -107,25 +107,24 @@ proc split*(T: type ImportMnemonic, argsRaw: string): seq[string] =
   let args = argsRaw.split(" ")
   var
     mnemonic: string
-    passphrase: string
+    # bip39passphrase could be supplied (ie for use in Trezor hardwallets),
+    # however here we are assuming it not being passed in for simplicity in
+    # supplying input parameters to the command. This is in parity with how
+    # status-desktop and status-react are doing it. status-desktop
+    # implementation:
+    # https://github.com/status-im/status-desktop/tree/master/src/status/libstatus/accounts.nim#L244
+    passphrase: string = ""
     password: string
 
   if args.len == 0:
     mnemonic = ""
-    passphrase = ""
     password = ""
   elif args.len < 13:
     mnemonic = args[0..^1].join(" ")
-    passphrase = ""
     password = ""
-  elif args.len < 14:
-    mnemonic = args[0..11].join(" ")
-    passphrase = ""
-    password = args[12]
   else:
     mnemonic = args[0..11].join(" ")
-    passphrase = args[12]
-    password = args[13..^1].join(" ")
+    password = args[12..^1].join(" ")
 
   @[mnemonic, passphrase, password]
 

@@ -10,3 +10,6 @@ proc mnemonicPhraseLengthToEntropyStrength*(length: int): EntropyStrength =
   let checksumLength = bitsLength mod 32
 
   return EntropyStrength(bitsLength - checksumLength)
+
+# TODO: Add ValidateKeystoreExtendedKey
+# https://github.com/status-im/status-go/blob/287e5cdf79fc06d5cf5c9d3bd3a99a1df1e3cd10/account/generator/utils.go#L24-L34

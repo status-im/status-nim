@@ -1,11 +1,18 @@
+import # std libs
+  std/strformat
+
 import # vendor libs
-  eth/keys, nimcrypto/[sha2, pbkdf2, hash, hmac], secp256k1,
-  stew/[results, byteutils]
+  eth/keys, nimcrypto/hmac, secp256k1, stew/[results, byteutils]
 
 import # nim-status libs
   ./utils, ./paths, ./types
 
-const masterSecret*: string = "Bitcoin seed"
+const
+  masterSecret*: string = "Bitcoin seed"
+  MIN_SEED_BYTES = 16 # 128 bits
+      # MinSeedBytes is the minimum number of bytes allowed for a seed to a master node.
+  MAX_SEED_BYTES = 64 # 512 bits
+    # MaxSeedBytes is the maximum number of bytes allowed for a seed to a master node.
 
 proc child(self: ExtendedPrivKey, child: PathLevel): ExtendedPrivKeyResult =
   var hctx: HMAC[sha512]
@@ -33,18 +40,28 @@ proc child(self: ExtendedPrivKey, child: PathLevel): ExtendedPrivKeyResult =
 
   err($sk.error())
 
-# proc deriveMaster*(seed: Keyseed): SecretKeyResult =
-#   let extPrivK = splitHMAC(string.fromBytes(openArray[byte](seed)), masterSecret).get()
-#   ok(extPrivK.secretKey)
-
-proc derive*(seed: Keyseed, path: KeyPath): SecretKeyResult =
-  var extPrivK = splitHMAC(string.fromBytes(openArray[byte](seed)), masterSecret).get()
-
+proc derive*(k: ExtendedPrivKey, path: KeyPath): ExtendedPrivKeyResult =
+  var extKey = k
   for child in path.pathNodes:
-    if child.isErr(): return err(child.error().cstring)
+    if child.isErr(): return ExtendedPrivKeyResult.err(child.error())
 
-    let r = extPrivK.child(child.get())
-    if r.isErr(): return err(r.error().cstring)
-    extPrivK = r.get()
+    let childResult = extKey.child(child.get)
+    if childResult.isErr(): return ExtendedPrivKeyResult.err(childResult.error())
+    extKey = childResult.get
 
-  ok(extPrivK.secretKey)
+  ok(extKey)
+
+proc newMaster*(seed: Keyseed): ExtendedPrivKeyResult =
+  # NewMaster creates new master node, root of HD chain/tree.
+  # Both master and child nodes are of ExtendedKey type, and all the children derive from the root node.
+  let lseed = openArray[byte](seed).len
+  if lseed < MIN_SEED_BYTES or lseed > MAX_SEED_BYTES:
+    return ExtendedPrivKeyResult.err(
+      fmt"the recommended size of seed is {MIN_SEED_BYTES}-{MAX_SEED_BYTES} bits"
+    )
+
+  splitHMAC(string.fromBytes(openArray[byte](seed)), masterSecret)
+
+proc toExtendedKey*(secretKey: SkSecretKey): ExtendedPrivKeyResult =
+  let extPrivKey = ExtendedPrivKey(secretKey: secretKey)
+  ExtendedPrivKeyResult.ok(extPrivKey)

@@ -6,46 +6,62 @@ import # vednor libs
 
 import # nim-status libs
   ../nim_status/account/generator/generator, ../nim_status/extkeys/paths,
-  ../nim_status/multiaccount, ./test_helpers
+  ./test_helpers
 
 
 procSuite "multiaccount":
-  test "multiaccount":
+
+  test "entropy strength":
     let entropyStrength = mnemonicPhraseLengthToEntropyStrength(12)
     assert entropyStrength.int == 128
+  
+  test "generate and derive accounts, store derived accounts":
+    let
+      gntr = Generator.new()
+      passphrase = ""
+      paths = @[PATH_WALLET_ROOT, PATH_DEFAULT_WALLET, PATH_WHISPER]
+      gndAccountInfosResult = gntr.generateAndDeriveAddresses(12, 1, passphrase,
+        paths)
 
-    let passphrase = ""
-    let multiAccounts = generateAndDeriveAccounts(12, 1, passphrase,
-      @[PATH_WALLET_ROOT, PATH_DEFAULT_WALLET, PATH_WHISPER])
+    assert gndAccountInfosResult.isOk
 
-    #assert len(multiAccounts) == 5
+    let
+      gndAccountInfos = gndAccountInfosResult.get
+      gndAccountInfo = gndAccountInfos[0]
+    assert len(gndAccountInfo.derived) == 3
 
-    let multiAcc = multiAccounts[0]
-    assert len(multiAcc.accounts) == 3
+    echo "Generated account mnemonic: ", gndAccountInfo.mnemonic.string
 
-    let password = "qwerty"
-    let dir = "test_accounts"
-    echo "MultiAcc mnemonic: ", multiAcc.mnemonic.string
+    let
+      gndImportedAccInfoResult = gntr.importMnemonic(gndAccountInfo.mnemonic, passphrase)
+    
+    assert gndImportedAccInfoResult.isOk
 
-    let importedMultiAcc = importMnemonic(multiAcc.mnemonic, passphrase)
+    let gndImportedAccInfo = gndImportedAccInfoResult.get
+      
+    assert gndImportedAccInfo.mnemonic.string.toBytes ==
+      gndAccountInfo.mnemonic.string.toBytes
 
-    assert string.fromBytes(openArray[byte](importedMultiAcc.keyseed)) ==
-      string.fromBytes(openArray[byte](multiAcc.keyseed))
-
-    echo "MultiAcc keyseed: ", string.fromBytes(openArray[byte](
-      multiAcc.keyseed))
+    let
+      password = "qwerty"
+      dir = "test_accounts"
 
     createDir(dir)
 
-    storeDerivedAccounts(multiAccounts[0], password, dir, workfactor = 100)
+    let storeDerivedAccsResult = gntr.storeDerivedAccounts(gndAccountInfo.id, paths, password, dir,
+        workfactor = 100)
 
-    let chatAddress = multiAcc.accounts[2].address
+    assert storeDerivedAccsResult.isOk
 
-    let chatAccount = loadAccount(chatAddress, password, dir)
+    let
+      storeDerivedAccs = storeDerivedAccsResult.get
+      chatAddress = storeDerivedAccs[2].address
+      loadAccResult = gntr.loadAccount(chatAddress, password, dir)
 
-    echo "chatAccount:"
-    echo chatAccount
+    assert loadAccResult.isOk, "failed loading account"
 
-    assert chatAccount.address == chatAddress
+    let loadAcc = loadAccResult.get
+
+    assert loadAcc.address == chatAddress
 
     removeDir(dir)

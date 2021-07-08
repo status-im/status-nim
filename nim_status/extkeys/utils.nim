@@ -1,5 +1,5 @@
 import # vendor libs
-  eth/keys, secp256k1, stew/[results, byteutils], nimcrypto/[sha2, hash, hmac]
+  eth/keys, secp256k1, stew/[results, byteutils], nimcrypto/hmac
 
 import # nim-status libs
   ./types

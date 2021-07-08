@@ -1,5 +1,5 @@
 import # nim libs
-  json, options, strutils, strformat
+  std/[json, options, strutils, strformat]
 
 import # vendor libs
   json_serialization, sqlcipher, web3/conversions as web3_conversions 

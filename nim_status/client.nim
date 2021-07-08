@@ -1,83 +1,112 @@
 import # nim libs
-  os, json
+  std/[os, json, times]
 
 import # vendor libs
-  confutils,
-  json_serialization,
-  sqlcipher
+  confutils, eth/keyfile/uuid, sqlcipher
 
 import # nim-status libs
-  ./extkeys/types,
-  ./accounts,
-  ./chats,
-  ./config,
-  ./database,
-  ./account/generator/generator,
-  ./migrations/sql_scripts_accounts as acc_migration,
-  ./migrations/sql_scripts_app as app_migration,
-  ./multiaccount,
-  ./settings
+  ./account/generator/generator, ./accounts, ./alias, ./chats, ./database,
+  ./extkeys/types, ./identicon, ./settings
 
 type StatusObject* = ref object
-  accountsDB*: DbConn
+  accountsGenerator*: Generator
+  accountsDb: DbConn
   dataDir*: string
-  userDB*: DbConn
+  userDb: DbConn
 
 proc new*(T: type StatusObject, dataDir: string,
   accountsDbFileName: string = "accounts.sql"): T =
 
-  T(accountsDB: initializeDB(dataDir / accountsDbFileName),
-    dataDir: dataDir)
+  T(accountsDb: initializeDB(dataDir / accountsDbFileName),
+    dataDir: dataDir, accountsGenerator: Generator.new())
 
 proc getAccounts*(self: StatusObject): seq[PublicAccount] =
-  getAccounts(self.accountsDB)
+  self.accountsDb.getAccounts()
 
 proc saveAccount*(self: StatusObject, account: PublicAccount) =
-  saveAccount(self.accountsDB, account)
+  self.accountsDb.saveAccount(account)
 
 proc updateAccountTimestamp*(self: StatusObject, timestamp: int64, keyUid: string) =
-  updateAccountTimestamp(self.accountsDB, timestamp, keyUid)
+  self.accountsDb.updateAccountTimestamp(timestamp, keyUid)
 
 proc createSettings*(self: StatusObject, settings: Settings, nodeConfig: JsonNode) =
-  createSettings(self.userDB, settings, nodeConfig)
+  self.userDb.createSettings(settings, nodeConfig)
 
 proc getSettings*(self: StatusObject): Settings =
-  getSettings(self.userDB)
+  self.userDb.getSettings()
 
 proc login*(self: StatusObject, keyUid: string, password: string) =
-  self.userDB = initializeDB(self.dataDir / keyUid & ".db", password)
+  self.userDb = initializeDB(self.dataDir / keyUid & ".db", password)
 
 proc logout*(self: StatusObject) =
-  self.userDB.close()
-  self.userDB = nil
+  self.userDb.close()
+  self.userDb = nil
 
-proc multiAccountGenerateAndDeriveAccounts*(self: StatusObject,
-  mnemonicPhraseLength: int, n: int, bip39Passphrase: string, paths: seq[KeyPath]
-  ): seq[MultiAccount] =
+proc createAccount*(self: StatusObject,
+  mnemonicPhraseLength, n: int, bip39Passphrase, password: string,
+  paths: seq[KeyPath], dir: string): PublicAccountResult =
 
-  generateAndDeriveAccounts(mnemonicPhraseLength, n, bip39Passphrase, paths)
+  let
+    gndAccounts = ?self.accountsGenerator.generateAndDeriveAddresses(
+      mnemonicPhraseLength, n, bip39Passphrase, paths)
+    gndAccount = gndAccounts[0]
 
-proc importMnemonicAndDeriveAccounts*(self: StatusObject,
-  mnemonicPhrase: Mnemonic, bip39Passphrase: string, paths: seq[KeyPath]): MultiAccount =
+  let
+    accountInfos = ?self.accountsGenerator.storeDerivedAccounts(gndAccount.id,
+      paths, password, dir)
+    whisperAcct = accountInfos[2]
+    account = PublicAccount(
+      creationTimestamp: epochTime().int,
+      name: whisperAcct.publicKey.generateAlias(),
+      identicon: whisperAcct.publicKey.identicon(),
+      keycardPairing: "",
+      keyUid: gndAccount.keyUid # whisper key-uid
+    )
 
-  importMnemonicAndDeriveAccounts(mnemonicPhrase, bip39Passphrase, paths)
+  self.accountsDb.saveAccount(account)
+  
+  # create the user db on disk by initializing it then immediately closing it
+  self.userDb = initializeDB(self.dataDir / account.keyUid & ".db", password)
+  self.userDb.close()
 
-proc multiAccountStoreDerivedAccounts*(self: StatusObject,
-  multiAcc: MultiAccount, password: string, dir: string) =
+  PublicAccountResult.ok(account)
 
-  storeDerivedAccounts(multiAcc, password, dir)
+proc importMnemonic*(self: StatusObject, mnemonic: Mnemonic,
+  bip39Passphrase, password: string, paths: seq[KeyPath],
+  dir: string): PublicAccountResult =
+
+  let
+    imported = ?self.accountsGenerator.importMnemonic(mnemonic, bip39Passphrase)
+    accountInfos = ?self.accountsGenerator.storeDerivedAccounts(imported.id,
+      paths, password, dir)
+    whisperAcct = accountInfos[2]
+    account = PublicAccount(
+      creationTimestamp: epochTime().int,
+      name: whisperAcct.publicKey.generateAlias(),
+      identicon: whisperAcct.publicKey.identicon(),
+      keycardPairing: "",
+      keyUid: imported.keyUid # whisper key-uid
+    )
+
+  self.accountsDb.saveAccount(account)
+
+  # create the user db by initializing it then immediately closing it
+  self.userDb = initializeDB(self.dataDir / account.keyUid & ".db", password)
+  self.userDb.close()
+
+  PublicAccountResult.ok(account)
 
 proc loadAccount*(self: StatusObject, address: string, password: string,
-  dir: string = ""): Account =
+  dir: string = ""): LoadAccountResult =
 
-  return loadAccount(address, password, dir)
+  self.accountsGenerator.loadAccount(address, password, dir)
 
 proc closeUserDB*(self: StatusObject) =
-  self.userDB.close()
+  self.userDb.close()
 
 proc loadChats*(self: StatusObject): seq[Chat] =
-  getChats(self.userDB)
+  getChats(self.userDb)
 
 proc close*(self: StatusObject) =
-  self.userDB.close()
-  self.accountsDB.close()
+  self.userDb.close()
+  self.accountsDb.close()

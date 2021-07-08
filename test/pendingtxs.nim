@@ -1,12 +1,11 @@
 import # nim libs
-  json, options, os, unittest
+  std/[json, options, os, unittest]
 
 import # vendor libs
   chronos, json_serialization, sqlcipher, web3/conversions as web3_conversions
 
 import # nim-status libs
-  ../nim_status/[database, pendingtxs],
-  ./test_helpers
+  ../nim_status/[database, pendingtxs], ./test_helpers
 
 procSuite "pendingtxs":
   asyncTest "pendingtxs":

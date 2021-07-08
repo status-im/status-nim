@@ -1,5 +1,5 @@
 import # nim libs
-  json, options, os, unittest
+  std/[json, options, os, unittest]
 
 import # vendor libs
   chronos, json_serialization, json_serialization/std/options as json_options,
