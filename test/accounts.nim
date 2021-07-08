@@ -6,7 +6,6 @@ import # vendor libs
 
 import # nim-status libs
   ../nim_status/[accounts, database, conversions],
-  ../nim_status/migrations/sql_scripts_accounts,
   ./test_helpers
 
 procSuite "accounts":
@@ -17,7 +16,7 @@ procSuite "accounts":
 
     let timestamp1 = epochTime().int
 
-    var account:Account = Account(
+    var account:PublicAccount = PublicAccount(
       creationTimestamp: timestamp1,
       name: "Test",
       identicon: "data:image/png;base64,something",

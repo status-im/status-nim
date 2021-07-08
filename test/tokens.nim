@@ -6,7 +6,6 @@ import # vendor libs
 
 import # nim-status libs
   ../nim_status/[database, tokens],
-  ../nim_status/migrations/sql_scripts_app,
   ./test_helpers
 
 procSuite "tokens":

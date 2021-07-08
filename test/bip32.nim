@@ -2,15 +2,15 @@ import # nim libs
   unittest
 
 import # vendor libs
-  chronos, byteutils, eth/keys, secp256k1, stew/[results]
+  chronos, eth/keys, secp256k1, stew/[results]
 
 import # nim-status libs
-  ../nim_status/account,
+  ../nim_status/extkeys/[hdkey, mnemonic, types],
   ./test_helpers
 
 procSuite "bip32":
   asyncTest "bip32":
-    let seed = getSeed(Mnemonic "panda eyebrow bullet gorilla call smoke muffin taste mesh discover soft ostrich alcohol speed nation flash devote level hobby quick inner drive ghost inside")
+    let seed = mnemonicSeed(Mnemonic "panda eyebrow bullet gorilla call smoke muffin taste mesh discover soft ostrich alcohol speed nation flash devote level hobby quick inner drive ghost inside")
 
     # This derivation path will generate a private key corresponding to wallet i=0
     var pk = derive(seed, KeyPath "m/44'/60'/0'/0/0").get()

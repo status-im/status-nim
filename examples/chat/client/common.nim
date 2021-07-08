@@ -20,7 +20,7 @@ type
   # TODO: alphabetise ChatClient above HelpText -- didn't want to interfere
   # with ongoing work
   ChatClient* = ref object
-    account*: Account
+    account*: PublicAccount
     chatConfig*: ChatConfig
     events*: EventChannel
     loggedin*: bool

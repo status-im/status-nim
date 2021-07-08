@@ -1,5 +1,5 @@
 import # nim libs
-  os, json, options, strutils, strformat
+  os, json, options
 
 import tables
 
@@ -7,8 +7,7 @@ import # vendor libs
   sqlcipher, json_serialization, web3/conversions as web3_conversions
 
 import # nim-status libs
-  ../../nim_status/[settings, database, conversions, callrpc],
-  ../../nim_status/migrations/sql_scripts_app
+  ../../nim_status/[settings, database, callrpc]
 
 from ../../nim_status/tx_history import nil
 import ../../nim_status/tx_history/types
@@ -69,7 +68,7 @@ let address = "0x4977E0B5ab94ff8A3c7625099cF3070775B92698"
 
 #let blockSeq = @[11092173, 11092125, 11092119, 11091997, 11091959, 11091931, 10471488, 10465082, 10464949, 10464833, 9979835, 9928232, 9928159, 9285203, 9285158, 9285065, 9271886, 9271873, 9176634, 9170416]
 # let blockSeq = @[11092173]
-var transferMap = TransferMap()
+# var transferMap = TransferMap()
 # tx_history.filterTxsForAddress(address, blockSeq, transferMap)
 
 # echo "filterTxsForAddress begin"

@@ -1,13 +1,12 @@
 import # nim libs
-  json, options, strutils, strformat
+  json, options, strformat
 
 import # vendor libs
-  web3/conversions as web3_conversions, web3/ethtypes, sqlcipher,
-  json_serialization, json_serialization/[reader, writer, lexer],
-  stew/byteutils
+  json_serialization, json_serialization/[reader, writer, lexer], sqlcipher,
+  web3/conversions as web3_conversions, web3/ethtypes
 
 import # nim-status libs
-  conversions, settings/types
+  conversions
 
 type
   ContactType* {.pure.} = enum

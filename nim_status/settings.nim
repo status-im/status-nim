@@ -1,11 +1,11 @@
 import # nim libs
-  json, options, strutils, locks, strformat
+  json, options, strutils, strformat
 
 import # vendor libs
-  web3/conversions as web3_conversions, web3/ethtypes, sqlcipher, json_serialization
+  json_serialization, sqlcipher, web3/conversions as web3_conversions 
 
 import # nim-status libs
-  conversions, settings/types
+  ./conversions, ./settings/types
 
 export types, options
 

@@ -7,7 +7,6 @@ import # vendor libs
 
 import # nim-status libs
   ../nim_status/[chats, contacts, conversions, database, messages],
-  ../nim_status/migrations/sql_scripts_app,
   ./test_helpers
 
 procSuite "chats":
@@ -137,7 +136,6 @@ procSuite "chats":
     db.saveMessage(msg)
 
     let chatsAfterBlocking = db.blockContact(contact)
-    var found: bool
 
     check:
       # Assert that blockContact deleted entry from user_messages

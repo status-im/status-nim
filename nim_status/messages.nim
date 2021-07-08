@@ -1,11 +1,11 @@
 import # nim libs
   json, options, sequtils, strutils, strformat
-import # vendor libs
-  web3/conversions as web3_conversions, web3/ethtypes,
-  sqlcipher, json_serialization, json_serialization/[reader, writer, lexer],
-  stew/byteutils
 
-import conversions, settings/types
+import # vendor libs
+  sqlcipher, json_serialization, json_serialization/[reader, writer, lexer]
+
+import # nim-status libs
+  conversions
 
 type
   MessageType* {.pure.} = enum

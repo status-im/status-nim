@@ -1,13 +1,11 @@
 import # nim libs
-  os, strutils, unittest
+  strutils, unittest
 
-import # vednor libs
-  chronos, eth/[keys, p2p]
-
+import # vendor libs
+  chronos
 
 import # nim-status libs
-  ../nim_status/mnemonic,
-  ./test_helpers
+  ../nim_status/extkeys/mnemonic, ./test_helpers
 
 procSuite "mnemonic":
   test "mnemonic":
@@ -16,7 +14,7 @@ procSuite "mnemonic":
 
     echo "BitSeq: ", s
 
-    let mnemonic = mnemonicPhrase(128, Language.English).string
+    let mnemonic = mnemonicPhrase(EntropyStrength 128, Language.English).string
     echo "phrase:"
     echo mnemonic
 

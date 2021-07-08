@@ -5,13 +5,14 @@ import # vednor libs
   chronos, eth/[keys, p2p], stew/byteutils
 
 import # nim-status libs
-  ../nim_status/[account, multiaccount], ./test_helpers
+  ../nim_status/account/generator/generator, ../nim_status/extkeys/paths,
+  ../nim_status/multiaccount, ./test_helpers
 
 
 procSuite "multiaccount":
   test "multiaccount":
     let entropyStrength = mnemonicPhraseLengthToEntropyStrength(12)
-    assert entropyStrength == 128
+    assert entropyStrength.int == 128
 
     let passphrase = ""
     let multiAccounts = generateAndDeriveAccounts(12, 1, passphrase,

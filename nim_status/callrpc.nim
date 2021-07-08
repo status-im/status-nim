@@ -1,6 +1,6 @@
-import web3, os, json, strutils
+import web3, json, strutils
 import chronos, json_rpc/client
-import settings, sets
+import settings
 
 type Web3Error* = object of CatchableError
 
@@ -72,7 +72,7 @@ proc callRPC*(web3Conn: Web3, rpcMethod: string, params: JsonNode): Response =
     raise (ref Web3Error)(msg: "web3 connection is not available")
 
   try:
-    var m = parseEnum[RemoteMethod](rpcMethod)
+    discard parseEnum[RemoteMethod](rpcMethod)
   except:
     return %* {"code": -32601, "message": "the method " & rpcMethod & " does not exist/is not available"}
 

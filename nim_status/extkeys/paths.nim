@@ -2,11 +2,20 @@ import strutils
 import stew/[results]
 import ./types
 
-const HARDENED_INDEX: uint32 = 1 shl 31;
+const 
+  HARDENED_INDEX: uint32 = 1 shl 31
+  PATH_WALLET_ROOT* = KeyPath("m/44'/60'/0'/0")
+  PATH_EIP_1581* = KeyPath("m/43'/60'/1581'")
+    # EIP1581 Root Key, the extended key from which any whisper key/encryption
+    # key can be derived
+  PATH_DEFAULT_WALLET* = KeyPath(PATH_WALLET_ROOT.string & "/0")
+    # BIP44-0 Wallet key, the default wallet key
+  PATH_WHISPER* = KeyPath(PATH_EIP_1581.string & "/0'/0")
+    # EIP1581 Chat Key 0, the default whisper key
 
 proc isNonHardened*(self: PathLevel): bool = (self.uint32 and HARDENED_INDEX) == 0
 
-func parse*(T: type PathLevel, value: string): PathLevelResult =
+func parse(T: type PathLevel, value: string): PathLevelResult =
   var child: string
   var mask: uint32
 

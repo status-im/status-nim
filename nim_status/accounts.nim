@@ -1,61 +1,63 @@
 import # nim libs
-  os, json, options, strutils, strformat
+  json, options, strformat
+
 import # vendor libs
-  web3, chronos, web3/conversions as web3_conversions, web3/ethtypes,
-  sqlcipher, json_serialization, json_serialization/[reader, writer, lexer],
-  stew/byteutils
-import conversions, settings/types, settings, database, conversions, callrpc
+  chronos, json_serialization, json_serialization/[reader, writer, lexer],
+  sqlcipher
 
-var db_conn*: DbConn
-var web3_conn*: Web3
+import # nim-status libs
+  ./conversions, ./settings, ./database
 
-proc login*(accountData, password: string) =
-  # TODO: get account, validate password, etc
-  # TODO: should this be async?
-  # TODO: db should have been initialized somewhere, not here
-  # TODO: determine where will the DB connection live. In the meantime I'm storing it into a global variable
-  # TODO: determine where the web3 conn will live
+# var db_conn*: DbConn
+# var web3_conn*: Web3
 
-  let path =  getCurrentDir() / accountData & ".db"
-  db_conn = initializeDB(path, password)
+# proc login*(accountData, password: string) =
+#   # TODO: get account, validate password, etc
+#   # TODO: should this be async?
+#   # TODO: db should have been initialized somewhere, not here
+#   # TODO: determine where will the DB connection live. In the meantime I'm storing it into a global variable
+#   # TODO: determine where the web3 conn will live
 
-  # TODO: these settings should have been set when calling saveAccountAndLogin
-  let settingsStr = """{
-    "address": "0x1122334455667788990011223344556677889900",
-    "chaos-mode": true,
-    "networks/current-network": "mainnet_rpc",
-    "dapps-address": "0x1122334455667788990011223344556677889900",
-    "eip1581-address": "0x1122334455667788990011223344556677889900",
-    "installation-id": "ABC-DEF-GHI",
-    "key-uid": "XYZ",
-    "latest-derived-path": 0,
-    "networks/networks": [{"id":"mainnet_rpc","etherscan-link":"https://etherscan.io/address/","name":"Mainnet with upstream RPC","config":{"NetworkId":1,"DataDir":"/ethereum/mainnet_rpc","UpstreamConfig":{"Enabled":true,"URL":"wss://mainnet.infura.io/ws/v3/7230123556ec4a8aac8d89ccd0dd74d7"}}}],
-    "name": "test",
-    "photo-path": "ABXYZC",
-    "preview-privacy?": false,
-    "public-key": "0x123",
-    "signing-phrase": "ABC DEF GHI",
-    "wallet-root-address": "0x1122334455667788990011223344556677889900"
-  }"""
+#   let path =  getCurrentDir() / accountData & ".db"
+#   db_conn = initializeDB(path, password)
 
-  let settingsObj = JSON.decode(settingsStr, Settings, allowUnknownFields = true)
-  let nodeConfig = %* {"config": 1}
-  db_conn.createSettings(settingsObj, nodeConfig)
+#   # TODO: these settings should have been set when calling saveAccountAndLogin
+#   let settingsStr = """{
+#     "address": "0x1122334455667788990011223344556677889900",
+#     "chaos-mode": true,
+#     "networks/current-network": "mainnet_rpc",
+#     "dapps-address": "0x1122334455667788990011223344556677889900",
+#     "eip1581-address": "0x1122334455667788990011223344556677889900",
+#     "installation-id": "ABC-DEF-GHI",
+#     "key-uid": "XYZ",
+#     "latest-derived-path": 0,
+#     "networks/networks": [{"id":"mainnet_rpc","etherscan-link":"https://etherscan.io/address/","name":"Mainnet with upstream RPC","config":{"NetworkId":1,"DataDir":"/ethereum/mainnet_rpc","UpstreamConfig":{"Enabled":true,"URL":"wss://mainnet.infura.io/ws/v3/7230123556ec4a8aac8d89ccd0dd74d7"}}}],
+#     "name": "test",
+#     "photo-path": "ABXYZC",
+#     "preview-privacy?": false,
+#     "public-key": "0x123",
+#     "signing-phrase": "ABC DEF GHI",
+#     "wallet-root-address": "0x1122334455667788990011223344556677889900"
+#   }"""
 
-  web3_conn = newWeb3(getSettings(db_conn))
+#   let settingsObj = JSON.decode(settingsStr, Settings, allowUnknownFields = true)
+#   let nodeConfig = %* {"config": 1}
+#   db_conn.createSettings(settingsObj, nodeConfig)
+
+#   web3_conn = newWeb3(getSettings(db_conn))
 
 
-proc logout*() =
-  waitFor web3_conn.close()
-  db_conn.close()
-  web3_conn = nil
+# proc logout*() =
+#   waitFor web3_conn.close()
+#   db_conn.close()
+#   web3_conn = nil
 
-proc test_removeDB*(accountData: string) = # TODO: remove this once proper db initialization is available
-  let path =  getCurrentDir() / accountData & ".db"
-  removeFile(path)
+# proc test_removeDB*(accountData: string) = # TODO: remove this once proper db initialization is available
+#   let path =  getCurrentDir() / accountData & ".db"
+#   removeFile(path)
 
 type
-  Account* {.dbTableName("accounts").} = object
+  PublicAccount* {.dbTableName("accounts").} = object
     creationTimestamp* {.serializedFieldName("creationTimestamp"), dbColumnName("creationTimestamp").}: int
     name* {.serializedFieldName("name"), dbColumnName("name").}: string
     identicon* {.serializedFieldName("identicon"), dbColumnName("identicon").}: string
@@ -64,14 +66,14 @@ type
     loginTimestamp* {.serializedFieldName("loginTimestamp"), dbColumnName("loginTimestamp").}: Option[int]
 
 proc deleteAccount*(db: DbConn, keyUid: string) =
-  var tblAccounts: Account
+  var tblAccounts: PublicAccount
   let query = fmt"""DELETE FROM {tblAccounts.tableName}
                     WHERE       {tblAccounts.keyUid.columnName} = ?"""
 
   db.exec(query, keyUid)
 
-proc getAccounts*(db: DbConn): seq[Account] =
-  var tblAccounts: Account
+proc getAccounts*(db: DbConn): seq[PublicAccount] =
+  var tblAccounts: PublicAccount
   let query = fmt"""SELECT    {tblAccounts.creationTimestamp.columnName},
                               {tblAccounts.name.columnName},
                               {tblAccounts.loginTimestamp.columnName},
@@ -80,10 +82,10 @@ proc getAccounts*(db: DbConn): seq[Account] =
                               {tblAccounts.keyUid.columnName}
                     FROM      {tblAccounts.tableName}
                     ORDER BY  {tblAccounts.creationTimestamp.columnName} ASC"""
-  result = db.all(Account, query)
+  result = db.all(PublicAccount, query)
 
-proc saveAccount*(db: DbConn, account: Account) =
-  var tblAccounts: Account
+proc saveAccount*(db: DbConn, account: PublicAccount) =
+  var tblAccounts: PublicAccount
   let query = fmt"""
     INSERT OR REPLACE INTO  {tblAccounts.tableName} (
                             {tblAccounts.creationTimestamp.columnName},
@@ -96,11 +98,11 @@ proc saveAccount*(db: DbConn, account: Account) =
 
   db.exec(query, account.creationTimestamp, account.name, account.identicon, account.keycardPairing, account.keyUid)#, account.loginTimestamp)
 
-proc toDisplayString*(account: Account): string =
+proc toDisplayString*(account: PublicAccount): string =
   fmt"{account.name} ({account.keyUid})"
 
-proc updateAccount*(db: DbConn, account: Account) =
-  var tblAccounts: Account
+proc updateAccount*(db: DbConn, account: PublicAccount) =
+  var tblAccounts: PublicAccount
   let query = fmt"""UPDATE  {tblAccounts.tableName}
                     SET     {tblAccounts.creationTimestamp.columnName} = ?,
                             {tblAccounts.name.columnName} = ?,
@@ -112,7 +114,7 @@ proc updateAccount*(db: DbConn, account: Account) =
   db.exec(query, account.creationTimestamp, account.name, account.identicon, account.keycardPairing, account.loginTimestamp, account.keyUid)
 
 proc updateAccountTimestamp*(db: DbConn, loginTimestamp: int64, keyUid: string) =
-  var tblAccounts: Account
+  var tblAccounts: PublicAccount
   let query = fmt"""UPDATE  {tblAccounts.tableName}
                     SET     {tblAccounts.loginTimestamp.columnName} = ?
                     WHERE   {tblAccounts.keyUid.columnName} = ?"""

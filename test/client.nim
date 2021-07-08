@@ -1,11 +1,11 @@
 import # nim libs
-  json, options, os, times, unittest
+  json, options, os, unittest
 
 import # vendor libs
   chronos, confutils, json_serialization, sqlcipher, web3/conversions as web3_conversions
 
 import # nim-status libs
-  ../nim_status/[accounts, client, config, conversions, database, settings],
+  ../nim_status/[accounts, client, conversions, database, settings],
   ./test_helpers
 
 procSuite "client":
@@ -15,7 +15,7 @@ procSuite "client":
 
     let statusObj = StatusObject.new(dataDir)
 
-    var account:Account = Account(
+    var account:PublicAccount = PublicAccount(
       name: "Test",
       loginTimestamp: 1.some,
       identicon: "data:image/png;base64,something",
