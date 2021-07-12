@@ -2,7 +2,7 @@ import # std libs
   std/[os, strutils]
 
 import # nim-status libs
-  ../../nim_status/[accounts, client, database],
+  ../../nim_status/[client, database], ../../nim_status/accounts/public_accounts,
   ../../nim_status/extkeys/[paths, types]
 
 import # chat libs
@@ -148,7 +148,7 @@ proc importMnemonic*(mnemonic: string, bip39Passphrase: string,
 
 proc listAccounts*() {.task(kind=no_rts, stoppable=false).} =
   let
-    accounts = status.getAccounts()
+    accounts = status.getPublicAccounts()
     event = ListAccountsResult(accounts: accounts, timestamp: epochTime().int64)
     eventEnc = event.encode
     task = taskArg.taskName
@@ -162,7 +162,7 @@ proc login*(account: int, password: string) {.task(kind=no_rts, stoppable=false)
   if statusState != StatusState.loggedout: return
   statusState = StatusState.loggingin
 
-  let allAccounts = status.getAccounts()
+  let allAccounts = status.getPublicAccounts()
 
   var
     event: LoginResult

@@ -6,7 +6,7 @@ import # vendor libs
   stew/results
 
 import # nim-status libs
-  ./account, ../../accounts, ../../extkeys/[hdkey, mnemonic, types], ./utils
+  ./account, ../../extkeys/[hdkey, mnemonic, types], ../public_accounts, ./utils
 
 export utils
 
@@ -163,7 +163,7 @@ proc loadAccount*(self: Generator, address: string, password: string,
       $privateKeyResult.error
 
   # TODO: Add ValidateKeystoreExtendedKey
-  # https://github.com/status-im/status-go/blob/e0eb96a992fea9d52d16ae9413b1198827360278/account/generator/generator.go#L213-L215
+  # https://github.com/status-im/status-go/blob/e0eb96a992fea9d52d16ae9413b1198827360278/accounts/generator/generator.go#L213-L215
 
   let
     secretKey = SkSecretKey(privateKeyResult.get)

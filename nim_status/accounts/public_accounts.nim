@@ -6,7 +6,7 @@ import # vendor libs
   sqlcipher
 
 import # nim-status libs
-  ./conversions, ./settings, ./database
+  ../conversions, ../settings, ../database
 
 type
   PublicAccount* {.dbTableName("accounts").} = object
@@ -24,7 +24,7 @@ proc deleteAccount*(db: DbConn, keyUid: string) =
 
   db.exec(query, keyUid)
 
-proc getAccounts*(db: DbConn): seq[PublicAccount] =
+proc getPublicAccounts*(db: DbConn): seq[PublicAccount] =
   var tblAccounts: PublicAccount
   let query = fmt"""SELECT    {tblAccounts.creationTimestamp.columnName},
                               {tblAccounts.name.columnName},

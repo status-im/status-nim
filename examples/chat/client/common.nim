@@ -5,9 +5,9 @@ import # chat libs
   ../config, ../task_runner
 
 import # nim-status libs
-  ../../../nim_status/accounts
+  ../../../nim_status/accounts/public_accounts
 
-export accounts, config, task_runner, times
+export public_accounts, config, task_runner, times
 
 logScope:
   topics = "chat client"

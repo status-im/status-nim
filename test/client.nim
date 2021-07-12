@@ -6,8 +6,8 @@ import # vendor libs
   web3/conversions as web3_conversions
 
 import # nim-status libs
-  ../nim_status/[accounts, client, conversions, database, settings],
-  ./test_helpers
+  ../nim_status/[client, conversions, database, settings],
+  ../nim_status/accounts/public_accounts, ./test_helpers
 
 procSuite "client":
   asyncTest "client":
@@ -26,7 +26,7 @@ procSuite "client":
 
     statusObj.saveAccount(account)
     statusObj.updateAccountTimestamp(1, "0x1234")
-    let accounts = statusObj.getAccounts()
+    let accounts = statusObj.getPublicAccounts()
     check:
       statusObj.dataDir == dataDir
       accounts[0].keyUid == "0x1234"

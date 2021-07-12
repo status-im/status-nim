@@ -5,7 +5,7 @@ import # vednor libs
   chronos, eth/keys, eth/keyfile/uuid
 
 import # nim-status libs
-  ../../../nim_status/account/generator/generator,
+  ../../../nim_status/accounts/generator/generator,
   ../../../nim_status/extkeys/types, ../../test_helpers
 
 

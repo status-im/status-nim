@@ -5,10 +5,10 @@ import # vendor libs
   chronos, json_serialization, sqlcipher, web3/conversions as web3_conversions
 
 import # nim-status libs
-  ../nim_status/[accounts, database, conversions],
-  ./test_helpers
+  ../../nim_status/[database, conversions],
+  ../../nim_status/accounts/public_accounts, ../test_helpers
 
-procSuite "accounts":
+procSuite "public accounts":
   asyncTest "saveAccount, updateAccountTimestamp, deleteAccount":
     let path = currentSourcePath.parentDir() & "/build/my.db"
     removeFile(path)
@@ -27,7 +27,7 @@ procSuite "accounts":
     db.saveAccount(account)
 
     # check that the values saved correctly
-    var accountList = db.getAccounts()
+    var accountList = db.getPublicAccounts()
     check:
       accountList[0].creationTimestamp == timestamp1
       accountList[0].name == account.name
@@ -44,7 +44,7 @@ procSuite "accounts":
     account.keycardPairing = account.keycardPairing & "_updated"
     account.loginTimestamp = timestamp2.some
     db.updateAccount(account)
-    accountList = db.getAccounts()
+    accountList = db.getPublicAccounts()
 
     check:
       accountList.len == 1
@@ -58,7 +58,7 @@ procSuite "accounts":
     # check that we only update timestamp with `updateAccountTimestamp`
     let newTimestamp = 1
     db.updateAccountTimestamp(newTimestamp, account.keyUid)
-    accountList = db.getAccounts()
+    accountList = db.getPublicAccounts()
 
     check:
       accountList.len == 1
@@ -71,7 +71,7 @@ procSuite "accounts":
 
     # check that we can delete accounts
     db.deleteAccount(account.keyUid)
-    accountList = db.getAccounts()
+    accountList = db.getPublicAccounts()
 
     check:
       accountList.len == 0

@@ -5,7 +5,7 @@ import # vednor libs
   chronos, eth/[keys, p2p], stew/byteutils
 
 import # nim-status libs
-  ../nim_status/account/generator/generator, ../nim_status/extkeys/paths,
+  ../nim_status/accounts/generator/generator, ../nim_status/extkeys/paths,
   ./test_helpers
 
 

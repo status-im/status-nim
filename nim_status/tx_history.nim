@@ -3,7 +3,6 @@ import callrpc, conversions, os
 import web3, json, strutils, strformat, sequtils
 import json_rpc/client
 import nimcrypto
-import accounts
 import sets
 import tables
 import rlocks
