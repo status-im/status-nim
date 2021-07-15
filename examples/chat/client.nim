@@ -42,6 +42,9 @@ proc stop*(self: ChatClient) {.async.} =
 
   debug "client stopped"
 
+proc addWalletAccount*(self: ChatClient, name, password: string) {.async.} =
+  asyncSpawn addWalletAccount(self.taskRunner, status, name, password)
+
 proc connect*(self: ChatClient, username: string) {.async.} =
   asyncSpawn startWakuChat2(self.taskRunner, status, username)
 

@@ -1,5 +1,8 @@
-import secp256k1
-import stew/[results]
+import # std libs
+  std/typetraits
+
+import # vendor libs
+  secp256k1, stew/results
 
 type
   Mnemonic* = distinct string
@@ -21,3 +24,7 @@ type
   ExtendedPrivKeyResult* = Result[ExtendedPrivKey, string]
 
   SecretKeyResult* = SkResult[SkSecretKey]
+
+proc `==`*(a, b: KeyPath): auto = distinctBase(a) == distinctBase(b)
+
+proc `$`*(k: KeyPath): auto = distinctBase(k)

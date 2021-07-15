@@ -10,12 +10,12 @@ import # nim-status libs
 
 type
   PublicAccount* {.dbTableName("accounts").} = object
-    creationTimestamp* {.serializedFieldName("creationTimestamp"), dbColumnName("creationTimestamp").}: int
+    creationTimestamp* {.serializedFieldName("creationTimestamp"), dbColumnName("creationTimestamp").}: int64
     name* {.serializedFieldName("name"), dbColumnName("name").}: string
     identicon* {.serializedFieldName("identicon"), dbColumnName("identicon").}: string
     keycardPairing* {.serializedFieldName("keycardPairing"), dbColumnName("keycardPairing").}: string
     keyUid* {.serializedFieldName("keyUid"), dbColumnName("keyUid").}: string
-    loginTimestamp* {.serializedFieldName("loginTimestamp"), dbColumnName("loginTimestamp").}: Option[int]
+    loginTimestamp* {.serializedFieldName("loginTimestamp"), dbColumnName("loginTimestamp").}: Option[int64]
 
 proc deleteAccount*(db: DbConn, keyUid: string) =
   var tblAccounts: PublicAccount
@@ -23,6 +23,18 @@ proc deleteAccount*(db: DbConn, keyUid: string) =
                     WHERE       {tblAccounts.keyUid.columnName} = ?"""
 
   db.exec(query, keyUid)
+
+proc getPublicAccount*(db: DbConn, keyUid: string): Option[PublicAccount] =
+  var tblAccounts: PublicAccount
+  let query = fmt"""SELECT    {tblAccounts.creationTimestamp.columnName},
+                              {tblAccounts.name.columnName},
+                              {tblAccounts.loginTimestamp.columnName},
+                              {tblAccounts.identicon.columnName},
+                              {tblAccounts.keycardPairing.columnName},
+                              {tblAccounts.keyUid.columnName}
+                    FROM      {tblAccounts.tableName}
+                    WHERE     {tblAccounts.keyUid.columnName}= ?"""
+  result = db.one(PublicAccount, query, keyUid)
 
 proc getPublicAccounts*(db: DbConn): seq[PublicAccount] =
   var tblAccounts: PublicAccount

@@ -12,6 +12,11 @@ logScope:
 type
   ClientEvent* = ref object of Event
 
+  AddWalletAccountResult* = ref object of ClientEvent
+    account*: PublicAccount
+    error*: string
+    timestamp*: int64
+
   CreateAccountResult* = ref object of ClientEvent
     account*: PublicAccount
     error*: string
@@ -44,6 +49,7 @@ type
     username*: string
 
 const clientEvents* = [
+  "AddWalletAccountResult",
   "CreateAccountResult",
   "ImportMnemonicResult",
   "ListAccountsResult",

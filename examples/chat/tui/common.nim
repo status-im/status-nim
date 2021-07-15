@@ -41,6 +41,10 @@ type
   # all fields on types that derive from Command should be of type `string`
   Command* = ref object of RootObj
 
+  AddWalletAccount* = ref object of Command
+    name*: string
+    password*: string
+
   Connect* = ref object of Command
 
   CommandParameter* = ref object of RootObj
@@ -90,6 +94,7 @@ const
 
   commands* = {
     DEFAULT_COMMAND: "SendMessage",
+    "addaccount": "AddWalletAccount",
     "connect": "Connect",
     "createaccount": "CreateAccount",
     "disconnect": "Disconnect",
@@ -103,6 +108,7 @@ const
 
   aliases* = {
     "?": "help",
+    "add": "addaccount",
     "create": "createaccount",
     "import": "importmnemonic",
     "list": "listaccounts",
@@ -111,6 +117,7 @@ const
 
   aliased* = {
     DEFAULT_COMMAND: @["send"],
+    "addaccount": @["add"],
     "createaccount": @["create"],
     "importmnemonic": @["import"],
     "help": @["?"],

@@ -15,9 +15,6 @@ proc isPubKey*(str: string): bool =
   str[0..3] == "0x04" and
   match(str[2..^1], reHex)
 
-proc parseAddress*(strAddress: string): Address =
-  fromHex(Address, strAddress)
-
 proc hashMessage*(message: string): string =
   ## hashMessage calculates the hash of a message to be safely signed by the keycard.
   ## The hash is calulcated as
@@ -32,3 +29,10 @@ proc hashMessage*(message: string): string =
   const END_OF_MEDIUM = Rune(0x19).toUTF8
   const prefix = END_OF_MEDIUM & "Ethereum Signed Message:\n"
   "0x" & toLower($keccak_256.digest(prefix & $(msg.len) & msg))
+
+proc indexOf*[T](s: seq[T], item: T): int =
+  var i = 0
+  for i in 0..s.len:
+    if s[i] == item:
+      return i
+  return -1

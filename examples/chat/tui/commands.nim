@@ -25,6 +25,44 @@ logScope:
 # `command` proc should implement the appropriate logic to deal with those
 # values
 
+# AddWalletAccount ----------------------------------------------------------------
+
+proc help*(T: type AddWalletAccount): HelpText =
+  let command = "addaccount"
+  HelpText(command: command, aliases: aliased[command], parameters: @[
+    CommandParameter(name: "name", description: "(Optional) Display name for " &
+      "the new account."),
+    CommandParameter(name: "password", description: "Password of the current " &
+      "account.")
+    ], description: "Creates a new wallet account derived from the master " &
+        "key of the currently logged in account")
+
+proc new*(T: type AddWalletAccount, args: varargs[string]): T =
+  var
+    name = ""
+    password = ""
+  if args.len > 1:
+    name = args[0]
+    password = args[1]
+  elif args.len > 0:
+    password = args[0]
+
+  T(name: name, password: password)
+
+proc split*(T: type AddWalletAccount, argsRaw: string): seq[string] =
+  argsRaw.split(" ")
+
+proc command*(self: ChatTUI, command: AddWalletAccount) {.async, gcsafe,
+  nimcall.} =
+  try:
+    if command.password == "":
+      self.wprintFormatError(epochTime().int64,
+        "password cannot be blank, please provide a password.")
+    else:
+      asyncSpawn self.client.addWalletAccount(command.name, command.password)
+  except:
+    self.wprintFormatError(epochTime().int64, "invalid arguments.")
+
 # Connect ----------------------------------------------------------------------
 
 proc help*(T: type Connect): HelpText =

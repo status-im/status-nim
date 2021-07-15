@@ -96,6 +96,28 @@ proc action*(self: ChatTUI, event: InputString) {.async, gcsafe, nimcall.} =
 
     self.printInput(input)
 
+# AddWalletAccountResult ----------------------------------------------------------
+
+proc action*(self: ChatTUI, event: AddWalletAccountResult) {.async, gcsafe,
+  nimcall.} =
+
+  # if TUI is not ready for output then ignore it
+  if self.outputReady:
+    if event.error != "":
+      self.wprintFormatError(event.timestamp, event.error)
+      return
+
+    let
+      account = event.account
+      timestamp = event.timestamp
+
+      name = account.name
+      keyUid = account.keyUid
+      abbrev = keyUid[0..5] & "..." & keyUid[^4..^1]
+
+    self.printResult("Added wallet account:", timestamp)
+    self.printResult(fmt"{2.indent()}{name} ({abbrev})", timestamp)
+
 # CreateAccountResult ----------------------------------------------------------
 
 proc action*(self: ChatTUI, event: CreateAccountResult) {.async, gcsafe,

@@ -2,7 +2,7 @@ import # nim libs
   std/[json, options, os, unittest]
 
 import # vendor libs
-  chronos, confutils, json_serialization, sqlcipher,
+  chronos, json_serialization, sqlcipher,
   web3/conversions as web3_conversions
 
 import # nim-status libs
@@ -15,10 +15,14 @@ procSuite "client":
     let dataDir = currentSourcePath.parentDir() / "build" / "data"
 
     let statusObj = StatusObject.new(dataDir)
+    check:
+      statusObj.isLoggedIn == false
+      statusObj.accountsGenerator != nil
+      statusObj.dataDir == dataDir
 
     var account:PublicAccount = PublicAccount(
       name: "Test",
-      loginTimestamp: 1.some,
+      loginTimestamp: 1.int64.some,
       identicon: "data:image/png;base64,something",
       keycardPairing: "",
       keyUid: "0x1234"
@@ -28,11 +32,10 @@ procSuite "client":
     statusObj.updateAccountTimestamp(1, "0x1234")
     let accounts = statusObj.getPublicAccounts()
     check:
-      statusObj.dataDir == dataDir
       accounts[0].keyUid == "0x1234"
+      accounts[0].loginTimestamp == 1.int64.some
 
     let password = "qwerty"
-    statusObj.login(account.keyUid, password)
     let settingsStr = """{
       "address": "0x1122334455667788990011223344556677889900",
       "chaos-mode": true,
@@ -50,13 +53,57 @@ procSuite "client":
       "signing-phrase": "ABC DEF GHI",
       "wallet-root-address": "0x1122334455667788990011223344556677889900"
     }"""
-    let settingsObj = Json.decode(settingsStr, Settings, allowUnknownFields = true)
+    let
+      settingsObj = Json.decode(settingsStr, Settings, allowUnknownFields = true)
+      nodeConfig = %* {"config": 1}
 
-    let nodeConfig = %* {"config": 1}
-    statusObj.createSettings(settingsObj, nodeConfig)
-    let dbSettings = statusObj.getSettings()
+    var createSettingsResult = statusObj.createSettings(settingsObj, nodeConfig)
     check:
-      dbSettings.keyUID == settingsObj.keyUID
+      # should not be able to create settings when logged out
+      createSettingsResult.isErr()
+
+    var logoutResult = statusObj.logout()
+    check:
+      # should not be able to log out when not logged in
+      logoutResult.isErr
+      statusObj.isLoggedIn == false
+
+    # var getSettingResult =
+    #   statusObj.getSetting(int, SettingsCol.LatestDerivedPath, 0)
+    # check:
+    #   # should not be able to get setting while logged out
+    #   getSettingResult.isErr
+
+    var getSettingsResult = statusObj.getSettings()
+    check:
+      # should not be able to get settings when logged out
+      getSettingsResult.isErr
+    
+    let loginResult = statusObj.login(account.keyUid, password)
+    check:
+      loginResult.isOk
+      loginResult.get == account
+
+    createSettingsResult = statusObj.createSettings(settingsObj, nodeConfig)
+
+    check:
+      createSettingsResult.isOk
+
+    # getSettingResult =
+    #   statusObj.getSetting[int](SettingsCol.LatestDerivedPath, 0)
+    # check:
+    #   # should not be able to get setting while logged out
+    #   getSettingResult.isOk
+
+    getSettingsResult = statusObj.getSettings()
+    check:
+      getSettingsResult.isOk
+      getSettingsResult.get.keyUID == settingsObj.keyUID
+
+    logoutResult = statusObj.logout()
+    check:
+      logoutResult.isOk
+      statusObj.isLoggedIn == false
 
 
     statusObj.close()

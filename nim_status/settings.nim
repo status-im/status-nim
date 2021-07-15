@@ -57,22 +57,48 @@ proc createSettings*(db: DbConn, s: Settings, nodecfg: JsonNode) = # TODO: repla
             s.signingPhrase,
             s.walletRootAddress)
 
-proc saveSetting*(db: DbConn, setting: string, value: auto) =
-  var settings: Settings
-  db.exec(fmt"""UPDATE {settings.tableName} SET {setting} = ? WHERE synthetic_id = 'id'""", value)
-
 proc getNodeConfig*(db: DbConn): JsonNode =
   var settings: Settings
-  let query = fmt"""SELECT {settings.nodeConfig.columnName} FROM {settings.tableName} WHERE synthetic_id = 'id'"""
+  let query = fmt"""SELECT    {settings.nodeConfig.columnName}
+                    FROM      {settings.tableName}
+                    WHERE     synthetic_id = 'id'"""
   let nodeConfig = db.value(JsonNode, query)
   if not nodeConfig.isSome:
     raise newException(ValueError, "No record found for node config")
   nodeConfig.get
 
+proc getSetting*[T](db: DbConn, _: typedesc[T], setting: SettingsCol): Option[T] =
+  var settings: Settings
+  let query = fmt"""SELECT    {$setting}
+                    FROM      {settings.tableName}
+                    WHERE     synthetic_id = 'id'"""
+
+  db.value(T, query)
+
+proc getSetting*[T](db: DbConn, _: typedesc[T], setting: SettingsCol, defaultValue: T): T =
+  let setting = db.getSetting[:T](T, setting)
+  if setting.isNone:
+    result = defaultValue
+  else:
+    result = setting.get
+
 proc getSettings*(db: DbConn): Settings =
-  let query = fmt"""SELECT * FROM {result.tableName} WHERE synthetic_id = 'id'"""
+  let query = fmt"""SELECT    *
+                    FROM      {result.tableName}
+                    WHERE     synthetic_id = 'id'"""
 
   let settings = db.one(Settings, query)
   if not settings.isSome:
     raise newException(ValueError, "No record found for settings")
   settings.get
+
+proc saveSetting*(db: DbConn, setting: string, value: auto)
+  {.deprecated("Please use saveSetting(SettingsCol) instead").} =
+
+  var settings: Settings
+  db.exec(fmt"""UPDATE    {settings.tableName}
+                SET       {setting} = ?
+                WHERE     synthetic_id = 'id'""", value)
+
+proc saveSetting*(db: DbConn, setting: SettingsCol, value: auto) =
+  db.saveSetting($setting, value)
